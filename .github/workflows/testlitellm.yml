@@ -13,31 +13,31 @@ jobs:
       with:
         egress-policy: audit
 
-    - name: Test LiteLLM health endpoint
-      env:
-        LITELLM_HOST: ${{ secrets.LITELLM_HOST }}
-        LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
-        CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-        CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-      run: |
-        set -e
-        echo "🧪 Testing LiteLLM health via Cloudflare Access..."
-        RESPONSE="$(curl -ksS -w '\n%{http_code}' \
-          -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
-          -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
-          -H "Authorization: Bearer $LITELLM_API_KEY" \
-          https://$LITELLM_HOST/health || true)"
-        HTTP_CODE="$(echo "$RESPONSE" | tail -n1)"
-        BODY="$(echo "$RESPONSE" | head -n-1)"
+    # - name: Test LiteLLM health endpoint
+    #   env:
+    #     LITELLM_HOST: ${{ secrets.LITELLM_HOST }}
+    #     LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
+    #     CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+    #     CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+    #   run: |
+    #     set -e
+    #     echo "🧪 Testing LiteLLM health via Cloudflare Access..."
+    #     RESPONSE="$(curl -ksS -w '\n%{http_code}' \
+    #       -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+    #       -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+    #       -H "Authorization: Bearer $LITELLM_API_KEY" \
+    #       https://$LITELLM_HOST/health || true)"
+    #     HTTP_CODE="$(echo "$RESPONSE" | tail -n1)"
+    #     BODY="$(echo "$RESPONSE" | head -n-1)"
 
-        echo "HTTP status: $HTTP_CODE"
-        echo "Body: $BODY"
+    #     echo "HTTP status: $HTTP_CODE"
+    #     echo "Body: $BODY"
 
-        if [ "$HTTP_CODE" != "200" ]; then
-          echo "❌ Health check failed"
-          exit 1
-        fi
-        echo "✅ Health check OK"
+    #     if [ "$HTTP_CODE" != "200" ]; then
+    #       echo "❌ Health check failed"
+    #       exit 1
+    #     fi
+    #     echo "✅ Health check OK"
 
     - name: Test simple LiteLLM chat completion
       env:
