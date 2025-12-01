@@ -1,0 +1,74 @@
+name: Test LiteLLM via Cloudflare Access (hardened)
+
+on:
+  workflow_dispatch:  # Manual trigger for testing
+
+jobs:
+  test-litellm-access:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Harden the runner (egress audit only)
+      uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+      with:
+        egress-policy: audit
+
+    - name: Test LiteLLM health endpoint
+      env:
+        LITELLM_HOST: ${{ secrets.LITELLM_HOST }}  # e.g., litellm.yourdomain.com
+        CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+        CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      run: |
+        set -e
+        echo "🧪 Testing LiteLLM health via Cloudflare Access..."
+        RESPONSE="$(curl -ksS -w '\n%{http_code}' \
+          -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+          -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+          https://$LITELLM_HOST/health || true)"
+        HTTP_CODE="$(echo "$RESPONSE" | tail -n1)"
+        BODY="$(echo "$RESPONSE" | head -n-1)"
+
+        echo "HTTP status: $HTTP_CODE"
+        echo "Body: $BODY"
+
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "❌ Health check failed"
+          exit 1
+        fi
+        echo "✅ Health check OK"
+
+    - name: Test simple LiteLLM chat completion
+      env:
+        LITELLM_HOST: ${{ secrets.LITELLM_HOST }}
+        CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+        CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+      run: |
+        set -e
+        echo "🚀 Testing LiteLLM /v1/chat/completions via Cloudflare Access..."
+        curl -ksS -X POST "https://$LITELLM_HOST/v1/chat/completions" \
+          -H "Content-Type: application/json" \
+          -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+          -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+          -d '{
+            "model": "gpt-5-nano",
+            "messages": [
+              {"role": "user", "content": "Say hello in one short sentence."}
+            ],
+            "max_tokens": 16
+          }' | tee response.json
+
+        if grep -q '"choices"' response.json; then
+          echo "✅ LiteLLM responded successfully"
+        else
+          echo "❌ LiteLLM response did not contain choices"
+          cat response.json
+          exit 1
+        fi
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "## 🔐 Hardened LiteLLM Connectivity Test (Cloudflare)" >> $GITHUB_STEP_SUMMARY
+        echo "- StepSecurity Harden-Runner: enabled (egress audit)" >> $GITHUB_STEP_SUMMARY
+        echo "- Cloudflare Access service token: see logs above" >> $GITHUB_STEP_SUMMARY
+        echo "- LiteLLM health + simple chat: see logs above" >> $GITHUB_STEP_SUMMARY
