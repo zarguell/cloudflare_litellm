@@ -54,7 +54,7 @@ jobs:
           -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
           -H "Authorization: Bearer $LITELLM_API_KEY" \
           -d '{
-            "model": "gpt-4",
+            "model": "gpt-5-nano",
             "messages": [
               {"role": "user", "content": "Say hello in one short sentence."}
             ],
